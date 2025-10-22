@@ -1,12 +1,7 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Body
+from typing import Annotated
 
-
-class Item(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
+from classes import Item, User
 
 
 app = FastAPI()
@@ -21,5 +16,8 @@ async def create_item(item: Item):
 
 
 @app.put("/items/{item_id}")
-async def update_item(item_id: int, item: Item):
-    return {"id": item_id, **item.model_dump()}
+async def update_item_user(
+    item_id: int, item: Item, user: User, importance: Annotated[int, Body()]
+):
+
+    return {"id": item_id, "item": item, "user": user, "importance": importance}

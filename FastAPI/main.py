@@ -1,6 +1,6 @@
-from fastapi import FastAPI
-
-from enum import Enum
+from fastapi import FastAPI, Cookie
+from typing import Annotated
+from classes import ModelName
 
 app = FastAPI()
 
@@ -16,12 +16,6 @@ async def read_item(item_id: int, q: str | None = None):
         return {"item_id": item_id, "query": q}
     else:
         return {"item_id": item_id}
-
-
-class ModelName(str, Enum):
-    alexnet = "alexnet"
-    resnet = "resnet"
-    lenet = "lenet"
 
 
 @app.get("/models/{model_name}")
@@ -81,3 +75,21 @@ async def read_user_item(
             }
         )
     return item
+
+
+@app.get("/ads/")
+async def read_ads(ads_id: Annotated[str | None, Cookie()] = None):
+    return {"ads_id": ads_id}
+
+
+from classes import UserOut, UserIn
+
+
+@app.post("/user/", response_model=UserOut)
+async def create_user(user: UserIn):
+    return user
+
+
+@app.post("/status/", status_code=204)
+async def create_item(name: str):
+    return {"name": name}
