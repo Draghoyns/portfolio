@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
 
 
 # 9 features is okay, we can keep them for now (even if some are irrelevant)
@@ -11,7 +13,7 @@ def analyze_data(data: pd.DataFrame) -> None:
     print(data.describe())
 
 
-def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
+def preprocess_data(data: pd.DataFrame, mode: str = "train") -> pd.DataFrame:
     # drop features with too many missing values
     # if the number of NaN are above half the total, drop the column and print the column name
     for col in data.columns:
@@ -30,7 +32,10 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # very manual here
     # drop irrelevant features
-    data = data.drop(columns=["Name", "Ticket", "PassengerId"])
+    if mode == "train":
+        data = data.drop(columns=["Name", "Ticket", "PassengerId"])
+    else:  # test mode
+        data = data.drop(columns=["Name", "Ticket"])
 
     # convert categorical features to numerical (one-hot encoding or label encoding)
     data = pd.get_dummies(data, columns=["Sex", "Embarked"], drop_first=True)
@@ -39,13 +44,17 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def random_forest(data_path: str) -> None:
-
+def train_test_data_processing(data_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     train_df = pd.read_csv(data_path + "train.csv")
     test_df = pd.read_csv(data_path + "test.csv")
 
     train = preprocess_data(train_df)
-    test = preprocess_data(test_df)
+    test = preprocess_data(test_df, mode="test")
+
+    return train, test
+
+
+def random_forest(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
 
     # make the random forest model with the available features (simple features) with the training data
     y_train = train["Survived"]
@@ -53,18 +62,43 @@ def random_forest(data_path: str) -> None:
 
     model = RandomForestClassifier(random_state=42)
     model.fit(X_train, y_train)
-    y_pred = model.predict(test)
+    y_pred = model.predict(test.drop(columns=["PassengerId"]))
 
+    return y_pred
+
+
+def xgboosted(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
+    y_train = train["Survived"]
+    X_train = train.drop(columns=["Survived"])
+
+    model = XGBClassifier(objective="binary:logistic", random_state=42)
+
+    model.fit(X_train, y_train)
+    y_pred = model.predict(test.drop(columns=["PassengerId"]))
+
+    return y_pred
+
+
+def log_reg(train: pd.DataFrame, test: pd.DataFrame) -> None:
+    pass
+
+
+def save_pred(y_pred: np.ndarray, test: pd.DataFrame, filename: str) -> None:
     predictions = pd.DataFrame(
-        {"PassengerId": test_df["PassengerId"], "Survived": y_pred}
+        {"PassengerId": test["PassengerId"], "Survived": y_pred}
     )  # keep headers
 
-    predictions.to_csv("predictions.csv", index=False)
+    predictions.to_csv(filename, index=False)
 
-    # predict the test data
-    # save to predictions.csv
+
+# you should split the dataset to have a validation set to evaluate your model
 
 
 if __name__ == "__main__":
     data_path = "./data/"
-    random_forest(data_path)
+    train, test = train_test_data_processing(data_path)
+
+    y_pred = random_forest(train, test)
+    save_pred(y_pred, test, "random_forest_predictions.csv")
+    y_pred_xgb = xgboosted(train, test)
+    save_pred(y_pred_xgb, test, "xgboosted_predictions.csv")
