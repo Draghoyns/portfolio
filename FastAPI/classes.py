@@ -35,3 +35,8 @@ class UserIn(BaseModel):
 class UserOut(BaseModel):
     username: str
     full_name: str | None = None
+
+
+class Tags(Enum):
+    items = "items"
+    users = "users"
