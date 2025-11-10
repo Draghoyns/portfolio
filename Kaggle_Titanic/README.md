@@ -19,9 +19,12 @@ Expected files:
 - `data/test.csv`
 
 ## What this project shows
-- Basic exploratory data analysis (EDA)
+- Basic data analysis
 - Simple data preprocessing
 - Training a baseline classifier (random forest)
+- Training XGBoost classifier
+- Cross-validation
+- Grid search for hyperparameter tuning
 - Generating a Kaggle submission file
 
 ## Notes
