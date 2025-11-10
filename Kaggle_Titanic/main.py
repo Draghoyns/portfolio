@@ -1,7 +1,9 @@
+from xml.parsers.expat import model
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from xgboost import XGBClassifier
 
 
@@ -57,14 +59,44 @@ def train_test_data_processing(data_path: str) -> tuple[pd.DataFrame, pd.DataFra
 def random_forest(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
 
     # make the random forest model with the available features (simple features) with the training data
-    y_train = train["Survived"]
-    X_train = train.drop(columns=["Survived"])
+
+    y = train["Survived"]
+    X = train.drop(columns=["Survived"])
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
     model = RandomForestClassifier(random_state=42)
     model.fit(X_train, y_train)
-    y_pred = model.predict(test.drop(columns=["PassengerId"]))
+
+    print(
+        "Random Forest trained.\nEvaluation on validation set: ",
+        model.score(X_val, y_val),
+    )
+
+    print("Cross validation mean score: ", cross_val_score(model, X, y, cv=10).mean())
+
+    param_grid = {
+        "max_depth": [None, 3, 4, 5, 6],
+        "min_samples_split": [2, 5, 10, 20],
+        "n_estimators": [100, 150, 200],
+    }
+
+    best_model = do_grid_search(model, X, y, param_grid)
+    best_model.fit(X, y)
+    y_pred = best_model.predict(test.drop(columns=["PassengerId"]))
 
     return y_pred
+
+
+def do_grid_search(model, X, y, param_grid):
+    grid_search = GridSearchCV(model, param_grid, verbose=2)
+    grid_search.fit(X, y)
+
+    print("Best score obtained from Grid Search: ", grid_search.best_score_)
+    print("Best parameters from Grid Search: ", grid_search.best_params_)
+    best_model = grid_search.best_estimator_
+    return best_model
 
 
 def xgboosted(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
@@ -73,8 +105,20 @@ def xgboosted(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
 
     model = XGBClassifier(objective="binary:logistic", random_state=42)
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(test.drop(columns=["PassengerId"]))
+    # model.fit(X_train, y_train)
+
+    param_grid = {
+        "max_depth": [None, 3, 4, 5, 6],
+        "n_estimators": [100, 150, 200],
+        "learning_rate": [0.01, 0.1, 0.2],
+        "subsample": [0.5, 0.75, 1],
+        "scale_pos_weight": [1, 1.25, 1.5],
+        "num_parallel_tree": [1, 2, 5],
+    }
+
+    best_model = do_grid_search(model, X_train, y_train, param_grid)
+    y_pred = best_model.predict(test.drop(columns=["PassengerId"]))
+    # Best parameters from Grid Search:  {'learning_rate': 0.01, 'max_depth': None, 'n_estimators': 200, 'num_parallel_tree': 5, 'scale_pos_weight': 1, 'subsample': 0.75}
 
     return y_pred
 
@@ -91,14 +135,12 @@ def save_pred(y_pred: np.ndarray, test: pd.DataFrame, filename: str) -> None:
     predictions.to_csv(filename, index=False)
 
 
-# you should split the dataset to have a validation set to evaluate your model
-
-
 if __name__ == "__main__":
     data_path = "./data/"
     train, test = train_test_data_processing(data_path)
 
-    y_pred = random_forest(train, test)
-    save_pred(y_pred, test, "random_forest_predictions.csv")
+    # y_pred = random_forest(train, test)
+    # save_pred(y_pred, test, "random_forest_predictions.csv")
+
     y_pred_xgb = xgboosted(train, test)
     save_pred(y_pred_xgb, test, "xgboosted_predictions.csv")
