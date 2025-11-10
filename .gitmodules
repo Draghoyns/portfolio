@@ -1,3 +1,6 @@
 [submodule "media_db"]
 	path = media_db
 	url = https://github.com/Draghoyns/media_db.git
+[submodule "adventofcode"]
+	path = adventofcode
+	url = ./adventofcode
