@@ -1,3 +1,4 @@
+#include <iostream>
 #include "add.h"
 #include "io.h"
 
@@ -5,10 +6,10 @@
 
 int main(){
 
-    int x = readNumber();
-    int y = readNumber();
+    double x {readDouble()};
+    double y {readDouble()};
 
-    writeAnswer(add(x,y));
+    readOperation(x,y);
 
     return 0;
 }
